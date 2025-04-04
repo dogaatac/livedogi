@@ -1,0 +1,129 @@
+/* Balanced Modern Theme */
+:root {
+    --base-background: #12141D; /* Daha dengeli temel renk */
+    --primary-background: #1A1D26;
+    --secondary-background: #232733;
+    --text-primary: #E6EBFF;
+    --text-accent: #7A90FF;
+    --border-color: #343A4D;
+    --hover-color: #3E465F;
+    --shadow-color: rgba(0, 0, 0, 0.35);
+    --gradient-1: linear-gradient(135deg, #7A90FF 0%, #A0B1FF 100%);
+    --surface-overlay: linear-gradient(145deg, rgba(122,144,255,0.05) 0%, rgba(26,29,38,0.3) 100%);
+}
+
+/* Okunabilir Tipografi */
+body {
+    background: var(--base-background);
+    color: var(--text-primary);
+    line-height: 1.7;
+}
+
+h1 {
+    font-weight: 700;
+    letter-spacing: -0.25px;
+    margin: 25px 0 35px;
+    text-shadow: 0 2px 10px rgba(122, 144, 255, 0.15);
+}
+
+h1::after {
+    width: 100px;
+    height: 2px;
+    bottom: -10px;
+}
+
+h2, h3 {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+h3 {
+    font-size: 1.25rem;
+    margin-bottom: 18px;
+}
+
+/* Dengeli Kart Tasarımı */
+.card {
+    background: var(--secondary-background);
+    border: 1px solid var(--border-color);
+    box-shadow: 
+        0 8px 24px var(--shadow-color),
+        inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(8px);
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+}
+
+/* Daha Soft Gradient'ler */
+.card::before,
+.graph-container::after,
+h1::after {
+    background: linear-gradient(90deg, #7A90FF, #A0B1FF);
+    opacity: 0.8;
+}
+
+/* Net Form Elementleri */
+.dropdown {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.dropdown:hover {
+    background: rgba(122, 144, 255, 0.1);
+    border-color: var(--text-accent);
+}
+
+/* Optimize Edilmiş Grafik Alanı */
+.graph-container {
+    background: var(--secondary-background);
+    border: 1px solid var(--border-color);
+}
+
+/* Daha Belirgin İstatistikler */
+.stat-item {
+    background: rgba(35, 39, 51, 0.6);
+    border: 1px solid var(--border-color);
+}
+
+.stat-value {
+    color: var(--text-accent);
+    font-weight: 700;
+}
+
+/* Okunabilir Kod Blokları */
+pre {
+    background: #1E212B;
+    border: 1px solid var(--border-color);
+    color: #B8C5FF;
+}
+
+/* Responsive İyileştirmeler */
+@media (max-width: 768px) {
+    body {
+        padding: 20px;
+        gap: 20px;
+    }
+    
+    .card {
+        padding: 18px;
+    }
+}
+
+/* Denge Animasyonları */
+.card, .graph-container {
+    transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* Kontrast Optimizasyonu */
+a, button {
+    color: var(--text-accent);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--text-accent);
+    opacity: 0.5;
+}
