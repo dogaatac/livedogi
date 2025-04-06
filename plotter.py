@@ -1,20 +1,10 @@
 # plotter.py
-import pandas as pd  # Pandas modülünü içe aktar
+import pandas as pd
 import plotly.graph_objects as go
 from settings import PLOT_CANDLES_BEFORE, PLOT_CANDLES_AFTER
 
 class Plotter:
     def save_trade_graph(self, symbol, config_name, trade, df, is_opening=False):
-        """
-        Trade grafiğini oluşturur ve kaydeder.
-        
-        Args:
-            symbol (str): İşlem çifti
-            config_name (str): Bot konfigürasyon adı
-            trade (dict): Trade detayları
-            df (pd.DataFrame): Fiyat verileri
-            is_opening (bool): İşlem açılışı mı kapanışı mı?
-        """
         entry_time = pd.to_datetime(trade['entry_time'])
         sweep_time = pd.to_datetime(trade['sweep_time'])
         start_time = sweep_time - pd.Timedelta(minutes=15 * PLOT_CANDLES_BEFORE)

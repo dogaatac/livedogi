@@ -42,7 +42,6 @@ class TradingEngine:
     def load_initial_data(self, symbol, config_name):
         """Son 250 barlık geçmiş veriyi yükler."""
         try:
-            # Son 250 bar için başlangıç zamanını hesapla (15m * 250 = 3750 dakika)
             start_time = int((datetime.now() - timedelta(minutes=3750)).timestamp() * 1000)
             klines = self.data_manager.client.futures_historical_klines(
                 symbol=symbol, interval='15m', start_str=str(start_time), limit=250
@@ -59,7 +58,6 @@ class TradingEngine:
 
     def process_candle(self, msg):
         """Futures kline verisini işler."""
-        # Multiplex socket'tan gelen mesajın yapısını kontrol et
         if isinstance(msg, dict) and 'data' in msg:
             kline = msg['data']
             symbol = kline['s']
@@ -189,6 +187,7 @@ class TradingEngine:
         current_close = float(close[i])
         active_ph = {k: v for k, v in ph_dict.items() if k > i - DATA_WINDOW and k < i}
         active_pl = {k: v for k, v in pl_dict.items() if k > i - DATA_WINDOW and k < i}
+        
         for ph_idx, ph_price in active_ph.items():
             if ph_idx in self.used_pivots[symbol][config_name]:
                 continue
@@ -198,6 +197,7 @@ class TradingEngine:
                     self.sweeps_ph[symbol][config_name].append((ph_idx, ph_price, current_high, i, current_low, current_high))
                     self.used_pivots[symbol][config_name].add(ph_idx)
                     self.notifier.send_message(f"[{symbol}/{config_name}] Sell side sweep: Pivot High: {ph_price}, Sweep High: {current_high}")
+        
         for pl_idx, pl_price in active_pl.items():
             if pl_idx in self.used_pivots[symbol][config_name]:
                 continue
@@ -207,6 +207,7 @@ class TradingEngine:
                     self.sweeps_pl[symbol][config_name].append((pl_idx, pl_price, current_low, i, current_low, current_high))
                     self.used_pivots[symbol][config_name].add(pl_idx)
                     self.notifier.send_message(f"[{symbol}/{config_name}] Buy side sweep: Pivot Low: {pl_price}, Sweep Low: {current_low}")
+        
         for sweep in self.sweeps_pl[symbol][config_name][:]:
             pl_idx, pl_price, sweep_low, sweep_idx, manip_low, manip_high = sweep
             bars_since_sweep = i - sweep_idx
@@ -267,6 +268,7 @@ class TradingEngine:
                         monitor_thread.daemon = True
                         monitor_thread.start()
                         self.position_monitors[symbol][config_name].append(monitor_thread)
+        
         for sweep in self.sweeps_ph[symbol][config_name][:]:
             ph_idx, ph_price, sweep_high, sweep_idx, manip_low, manip_high = sweep
             bars_since_sweep = i - sweep_idx

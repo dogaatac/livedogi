@@ -63,11 +63,9 @@ class DataManager:
                         ticker = self.client.futures_symbol_ticker(symbol=symbol)
                         price = float(ticker['price'])
                         self.current_prices[symbol] = price
-                        # Fiyat güncellendiğinde log kaydı (isteğe bağlı)
-                        # logging.info(f"[{symbol}] Güncel fiyat: {price}")
                     except Exception as e:
                         logging.error(f"Futures fiyat güncelleme hatası ({symbol}): {e}")
-                time.sleep(0.5)  # Daha sık güncelleme için 0.5 saniye
+                time.sleep(0.5)
 
         price_thread = threading.Thread(target=update_prices)
         price_thread.daemon = True

@@ -1,10 +1,6 @@
 # config.py
-
-# Binance API ayarları (sonradan doldurulacak)
 API_KEY = "raFD7dbj3RIl16CtJQykIzbyC0lC7nN6cQOk1yi4vCDfCV9hYAmxKsOjNTp2qOS2"
 API_SECRET = "DLJ2rbAPcZ23STP0YaXrQGirHNN8sYMeuyzWZqVn4gI2MsdR10mfSk6cvMgOWono"
-
-# Discord Webhook URL (sonradan doldurulacak)
 DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1357682737430921279/Eup3FuN-5kpLSni9leEas0BGkqx-voNMQcg6sKRlpbFDYKqFibGwkC3JhM-xo_yIj3jF"
 
 DATA_FILES = {
@@ -13,7 +9,6 @@ DATA_FILES = {
     "agresif": "agresif_data.json"
 }
 
-# Config türleri
 CONFIGS = {
     "safe": {
         "LEFT": 15,

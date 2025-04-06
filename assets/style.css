@@ -1,19 +1,19 @@
-/* Genel Stil ve Değişkenler */
+/* style.css */
 :root {
-    --primary-background: #0f0e17; /* Ana arka plan rengi */
-    --secondary-background: #1a1d23; /* İkincil arka plan rengi */
-    --text-primary: #bfd2ff; /* Ana metin rengi */
-    --text-accent: #8da2fb; /* Vurgu metin rengi */
-    --border-color: #384459; /* Kenarlık rengi */
-    --hover-color: #556677; /* Üzerine gelindiğinde renk */
-    --shadow-color: rgba(0, 0, 0, 0.3); /* Gölge rengi */
+    --primary-background: #0f0e17;
+    --secondary-background: #1a1d23;
+    --text-primary: #bfd2ff;
+    --text-accent: #8da2fb;
+    --border-color: #384459;
+    --hover-color: #556677;
+    --shadow-color: rgba(0, 0, 0, 0.3);
 }
 
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    transition: all 0.3s ease; /* Yumuşak geçişler */
+    transition: all 0.3s ease;
 }
 
 body {
@@ -28,16 +28,15 @@ body {
     min-height: 100vh;
 }
 
-/* Başlık Stilleri */
 h1 {
     color: white;
     text-align: center;
-    font-size: clamp(2rem, 4vw, 3.5rem); /* Esnek font boyutu */
+    font-size: clamp(2rem, 4vw, 3.5rem);
     font-weight: 700;
     letter-spacing: -1px;
     margin-bottom: 30px;
     text-transform: uppercase;
-    background: linear-gradient(45deg, #8da2fb, #ffffff); /* Gradyan efekt */
+    background: linear-gradient(45deg, #8da2fb, #ffffff);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -50,7 +49,6 @@ h3 {
     font-size: 1.5rem;
 }
 
-/* Bölüm Stilleri */
 .section {
     width: 100%;
     max-width: 1200px;
@@ -59,15 +57,14 @@ h3 {
     background-color: var(--secondary-background);
     border-radius: 15px;
     box-shadow: 0 10px 25px var(--shadow-color);
-    backdrop-filter: blur(10px); /* Hafif bulanıklık efekti */
+    backdrop-filter: blur(10px);
 }
 
 .section:hover {
-    transform: translateY(-5px); /* Üzerine gelindiğinde hafif yükselme */
+    transform: translateY(-5px);
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
 }
 
-/* Form Elemanları */
 .dropdown, input, select {
     width: 100%;
     padding: 12px;
@@ -84,7 +81,6 @@ input:hover, input:focus {
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
-/* Log Bölümü */
 .log-section {
     max-height: 300px;
     overflow-y: auto;
@@ -96,21 +92,18 @@ input:hover, input:focus {
     line-height: 1.7;
 }
 
-/* Özet Bölümü */
 .summary-section {
     display: flex;
     flex-direction: column;
     gap: 10px;
 }
 
-/* İstatistikler ve İşlemler */
 .stats-trades-section {
     display: flex;
     flex-direction: column;
     gap: 20px;
 }
 
-/* Grafik Konteyneri */
 .graph-container {
     background-color: var(--secondary-background);
     border-radius: 15px;
@@ -118,7 +111,6 @@ input:hover, input:focus {
     box-shadow: 0 10px 25px var(--shadow-color);
 }
 
-/* Responsive Tasarım */
 @media (max-width: 768px) {
     .section {
         padding: 15px;
@@ -134,7 +126,6 @@ input:hover, input:focus {
     }
 }
 
-/* Kaydırma Çubuğu */
 ::-webkit-scrollbar {
     width: 8px;
 }
@@ -148,12 +139,11 @@ input:hover, input:focus {
     border-radius: 10px;
 }
 
-/* Animasyonlar */
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
 .section, .graph-container {
-    animation: fadeIn 0.6s ease-out; /* Giriş animasyonu */
+    animation: fadeIn 0.6s ease-out;
 }
