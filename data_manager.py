@@ -7,10 +7,19 @@ from utils import save_data, load_data
 from datetime import datetime, timedelta
 import threading
 import time
+import logging
+
+logging.basicConfig(
+    filename='trades.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 class DataManager:
     def __init__(self, api_key, api_secret):
         self.client = Client(api_key, api_secret)
+        self.client.API_URL = 'https://fapi.binance.com'
         self.trades = {symbol: {name: [] for name in CONFIGS} for symbol in SYMBOLS}
         self.balances = {symbol: {name: CONFIGS[name]["INITIAL_BALANCE"] for name in CONFIGS} for symbol in SYMBOLS}
         self.stats = {symbol: {name: {"total_trades": 0, "monthly_trades": 0, "tp_count": 0, "sl_count": 0, "last_month": datetime.now().month} for name in CONFIGS} for symbol in SYMBOLS}
@@ -44,6 +53,7 @@ class DataManager:
         }
         filename = DATA_FILES[config_name].replace(".json", f"_{symbol}.json")
         save_data(filename, data)
+        logging.info(f"Veriler kaydedildi: {symbol}/{config_name}")
 
     def start_price_updater(self):
         def update_prices():
@@ -51,11 +61,14 @@ class DataManager:
                 for symbol in SYMBOLS:
                     try:
                         ticker = self.client.futures_symbol_ticker(symbol=symbol)
-                        self.current_prices[symbol] = float(ticker['price'])
+                        price = float(ticker['price'])
+                        self.current_prices[symbol] = price
+                        # Fiyat güncellendiğinde log kaydı (isteğe bağlı)
+                        # logging.info(f"[{symbol}] Güncel fiyat: {price}")
                     except Exception as e:
-                        print(f"Fiyat güncelleme hatası ({symbol}): {e}")
-                time.sleep(2)
-        
+                        logging.error(f"Futures fiyat güncelleme hatası ({symbol}): {e}")
+                time.sleep(0.5)  # Daha sık güncelleme için 0.5 saniye
+
         price_thread = threading.Thread(target=update_prices)
         price_thread.daemon = True
         price_thread.start()
@@ -116,6 +129,14 @@ class DataManager:
 
     def get_current_price(self, symbol):
         return self.current_prices.get(symbol, 0.0)
+
+    def get_current_futures_price(self, symbol):
+        try:
+            ticker = self.client.futures_symbol_ticker(symbol=symbol)
+            return float(ticker['price'])
+        except Exception as e:
+            logging.error(f"Futures fiyat alınamadı [{symbol}]: {e}")
+            return None
 
     def handle_query(self, symbol, bot_name, command, engine):
         if symbol not in SYMBOLS:
