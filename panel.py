@@ -4,10 +4,10 @@ from tkinter import ttk
 import threading
 from data_manager import DataManager
 from engine import TradingEngine
-from settings import SYMBOLS, API_KEY, API_SECRET
+from settings import SYMBOLS  # Sadece SYMBOLS settings'den geliyor
+from config import API_KEY, API_SECRET, CONFIGS  # API_KEY, API_SECRET ve CONFIGS config'dan geliyor
 from notifications import Notifier
 from plotter import Plotter
-from config import CONFIGS  # CONFIGS'u import ediyoruz
 
 class TradingPanel:
     def __init__(self, root):
@@ -60,7 +60,7 @@ class TradingPanel:
 
         trade_info = ""
         for symbol in SYMBOLS:
-            for config_name in CONFIGS:  # CONFIGS burada kullanılıyor
+            for config_name in CONFIGS:
                 stats, trades = self.data_manager.get_stats(symbol, config_name)
                 trade_info += stats + "\n"
                 last_trades = self.data_manager.get_last_trades(symbol, config_name, count=3)
