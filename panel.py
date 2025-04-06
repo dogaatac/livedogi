@@ -171,4 +171,4 @@ if __name__ == "__main__":
     cli_thread = threading.Thread(target=run_cli)
     cli_thread.daemon = True
     cli_thread.start()
-    app.run(debug=True, host='0.0.0.0', port=8050)
+    app.run(debug=True, host='0.0.0.0', port=5000)

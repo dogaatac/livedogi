@@ -32,17 +32,20 @@ class TradingEngine:
         self.sweeps_ph = {symbol: {name: [] for name in CONFIGS} for symbol in SYMBOLS}
         self.used_pivots = {symbol: {name: set() for name in CONFIGS} for symbol in SYMBOLS}
         self.pivot_history = {symbol: {name: {'ph': {}, 'pl': {}} for name in CONFIGS} for symbol in SYMBOLS}
-        self.notified_events = {symbol: {name: set() for name in CONFIGS} for symbol in SYMBOLS}  # Bildirim takibi
+        self.notified_events = {symbol: {name: set() for name in CONFIGS} for symbol in SYMBOLS}
         self.data_manager = data_manager
         self.notifier = notifier
         self.plotter = plotter
         self.position_monitors = {symbol: {name: [] for name in CONFIGS} for symbol in SYMBOLS}
         self.running = True
         self.streams = {}
+        self.initial_data_loaded = {symbol: {name: False for name in CONFIGS} for symbol in SYMBOLS}  # Yeni: Veri yükleme kontrolü
 
     def load_initial_data(self, symbol, config_name):
+        if self.initial_data_loaded[symbol][config_name]:
+            return  # Veri zaten yüklendiyse tekrar çekme
         try:
-            start_time = int((datetime.now() - timedelta(minutes=3750)).timestamp() * 1000)
+            start_time = int((datetime.now() - timedelta(minutes=3750)).timestamp() * 1000)  # Yaklaşık 62 saatlik veri (15m * 250)
             klines = self.data_manager.client.futures_historical_klines(
                 symbol=symbol, interval='15m', start_str=str(start_time), limit=250
             )
@@ -52,6 +55,7 @@ class TradingEngine:
             })
             self.data[symbol][config_name] = df
             self.update_pivot_history(symbol, config_name, CONFIGS[config_name])
+            self.initial_data_loaded[symbol][config_name] = True
             logging.info(f"[{symbol}/{config_name}] 250 barlık geçmiş veri yüklendi.")
         except Exception as e:
             logging.error(f"Geçmiş veri yükleme hatası [{symbol}/{config_name}]: {e}")
@@ -70,6 +74,9 @@ class TradingEngine:
                 'close': float(candle['c'])
             }
             for config_name, config in CONFIGS.items():
+                # İlk veri yüklenmediyse önce yükle
+                if not self.initial_data_loaded[symbol][config_name]:
+                    self.load_initial_data(symbol, config_name)
                 self.data[symbol][config_name] = pd.concat(
                     [self.data[symbol][config_name], pd.DataFrame([new_row])],
                     ignore_index=True
@@ -361,10 +368,27 @@ class TradingEngine:
     def start(self):
         for symbol in SYMBOLS:
             for config_name in CONFIGS:
-                self.load_initial_data(symbol, config_name)
+                self.load_initial_data(symbol, config_name)  # Sadece bir kez başlangıç verisi çek
             stream = f"{symbol.lower()}@kline_15m"
-            self.streams[symbol] = self.twm.start_multiplex_socket(callback=self.process_candle, streams=[stream])
+            try:
+                self.streams[symbol] = self.twm.start_multiplex_socket(callback=self.process_candle, streams=[stream], timeout=30)  # Zaman aşımı artırıldı
+            except Exception as e:
+                logging.error(f"WebSocket başlatma hatası [{symbol}]: {e}")
+                time.sleep(5)  # Hata sonrası 5 saniye bekle ve tekrar dene
+                self.restart_websocket(symbol)
         self.notifier.send_message(f"Futures sistemi başlatıldı: {', '.join(SYMBOLS)} için Safe, Mid, Agresif botlar aktif.")
+
+    def restart_websocket(self, symbol):
+        if symbol in self.streams:
+            self.twm.stop_socket(self.streams[symbol])
+            del self.streams[symbol]
+        stream = f"{symbol.lower()}@kline_15m"
+        try:
+            self.streams[symbol] = self.twm.start_multiplex_socket(callback=self.process_candle, streams=[stream], timeout=30)
+            logging.info(f"[{symbol}] WebSocket yeniden bağlandı.")
+        except Exception as e:
+            logging.error(f"[{symbol}] WebSocket yeniden bağlanma hatası: {e}")
+            time.sleep(10)  # Hata sonrası daha uzun bekle
 
     def stop(self):
         self.running = False
