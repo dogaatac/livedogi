@@ -32,6 +32,7 @@ class TradingEngine:
         self.sweeps_ph = {symbol: {name: [] for name in CONFIGS} for symbol in SYMBOLS}
         self.used_pivots = {symbol: {name: set() for name in CONFIGS} for symbol in SYMBOLS}
         self.pivot_history = {symbol: {name: {'ph': {}, 'pl': {}} for name in CONFIGS} for symbol in SYMBOLS}
+        self.notified_events = {symbol: {name: set() for name in CONFIGS} for symbol in SYMBOLS}  # Yeni: Bildirim takibi
         self.data_manager = data_manager
         self.notifier = notifier
         self.plotter = plotter
@@ -40,7 +41,6 @@ class TradingEngine:
         self.streams = {}
 
     def load_initial_data(self, symbol, config_name):
-        """Son 250 barlık geçmiş veriyi yükler."""
         try:
             start_time = int((datetime.now() - timedelta(minutes=3750)).timestamp() * 1000)
             klines = self.data_manager.client.futures_historical_klines(
@@ -57,7 +57,6 @@ class TradingEngine:
             logging.error(f"Geçmiş veri yükleme hatası [{symbol}/{config_name}]: {e}")
 
     def process_candle(self, msg):
-        """Futures kline verisini işler."""
         if isinstance(msg, dict) and 'data' in msg:
             kline = msg['data']
             symbol = kline['s']
@@ -108,23 +107,31 @@ class TradingEngine:
         for ph_idx, ph_price in ph_dict.items():
             if ph_idx in self.used_pivots[symbol][config_name]:
                 continue
+            event_key = f"ph_{ph_idx}_proximity"
             proximity = abs(current_price - ph_price) / ph_price
-            if proximity < PROXIMITY_THRESHOLD:
+            if proximity < PROXIMITY_THRESHOLD and event_key not in self.notified_events[symbol][config_name]:
                 self.notifier.send_message(f"[{symbol}/{config_name}] UYARI: Fiyat Pivot High ({ph_price}) manipülasyon bölgesine yakın! (Mesafe: {proximity*100:.2f}%)")
-            elif current_price > ph_price:
+                self.notified_events[symbol][config_name].add(event_key)
+            event_key = f"ph_{ph_idx}_manip"
+            if current_price > ph_price:
                 manip_ratio = (current_price - ph_price) / ph_price
-                if manip_ratio >= config["MANIPULATION_THRESHOLD"]:
+                if manip_ratio >= config["MANIPULATION_THRESHOLD"] and event_key not in self.notified_events[symbol][config_name]:
                     self.notifier.send_message(f"[{symbol}/{config_name}] DİKKAT: Manipülasyon olabilir! Pivot High ({ph_price}) aşıldı, oran: {manip_ratio*100:.2f}%")
+                    self.notified_events[symbol][config_name].add(event_key)
         for pl_idx, pl_price in pl_dict.items():
             if pl_idx in self.used_pivots[symbol][config_name]:
                 continue
+            event_key = f"pl_{pl_idx}_proximity"
             proximity = abs(pl_price - current_price) / pl_price
-            if proximity < PROXIMITY_THRESHOLD:
+            if proximity < PROXIMITY_THRESHOLD and event_key not in self.notified_events[symbol][config_name]:
                 self.notifier.send_message(f"[{symbol}/{config_name}] UYARI: Fiyat Pivot Low ({pl_price}) manipülasyon bölgesine yakın! (Mesafe: {proximity*100:.2f}%)")
-            elif current_price < pl_price:
+                self.notified_events[symbol][config_name].add(event_key)
+            event_key = f"pl_{pl_idx}_manip"
+            if current_price < pl_price:
                 manip_ratio = (pl_price - current_price) / pl_price
-                if manip_ratio >= config["MANIPULATION_THRESHOLD"]:
+                if manip_ratio >= config["MANIPULATION_THRESHOLD"] and event_key not in self.notified_events[symbol][config_name]:
                     self.notifier.send_message(f"[{symbol}/{config_name}] DİKKAT: Manipülasyon olabilir! Pivot Low ({pl_price}) altına inildi, oran: {manip_ratio*100:.2f}%")
+                    self.notified_events[symbol][config_name].add(event_key)
 
     def monitor_position(self, symbol, config_name, pos):
         while self.running and pos in self.positions[symbol][config_name]:
@@ -162,7 +169,10 @@ class TradingEngine:
             exit_price = pos['tp']
             message = f"[{symbol}/{config_name}] {pos['type'].capitalize()} işlem kapandı (TP): Entry: {pos['entry_price']}, Exit: {exit_price}, Profit: {profit}"
         trade = pos | {'exit_time': datetime.now(), 'exit_price': exit_price, 'profit': profit}
-        self.notifier.send_message(message)
+        event_key = f"close_{pos['entry_time']}_{reason}"
+        if event_key not in self.notified_events[symbol][config_name]:
+            self.notifier.send_message(message)
+            self.notified_events[symbol][config_name].add(event_key)
         self.data_manager.close_position(symbol, config_name, trade, self)
         self.plotter.save_trade_graph(symbol, config_name, trade, self.data[symbol][config_name], is_opening=False)
         self.positions[symbol][config_name].remove(pos)
@@ -196,7 +206,10 @@ class TradingEngine:
                 if manipulation_ratio >= config["MANIPULATION_THRESHOLD"]:
                     self.sweeps_ph[symbol][config_name].append((ph_idx, ph_price, current_high, i, current_low, current_high))
                     self.used_pivots[symbol][config_name].add(ph_idx)
-                    self.notifier.send_message(f"[{symbol}/{config_name}] Sell side sweep: Pivot High: {ph_price}, Sweep High: {current_high}")
+                    event_key = f"sweep_ph_{ph_idx}"
+                    if event_key not in self.notified_events[symbol][config_name]:
+                        self.notifier.send_message(f"[{symbol}/{config_name}] Sell side sweep: Pivot High: {ph_price}, Sweep High: {current_high}")
+                        self.notified_events[symbol][config_name].add(event_key)
         
         for pl_idx, pl_price in active_pl.items():
             if pl_idx in self.used_pivots[symbol][config_name]:
@@ -206,7 +219,10 @@ class TradingEngine:
                 if manipulation_ratio >= config["MANIPULATION_THRESHOLD"]:
                     self.sweeps_pl[symbol][config_name].append((pl_idx, pl_price, current_low, i, current_low, current_high))
                     self.used_pivots[symbol][config_name].add(pl_idx)
-                    self.notifier.send_message(f"[{symbol}/{config_name}] Buy side sweep: Pivot Low: {pl_price}, Sweep Low: {current_low}")
+                    event_key = f"sweep_pl_{pl_idx}"
+                    if event_key not in self.notified_events[symbol][config_name]:
+                        self.notifier.send_message(f"[{symbol}/{config_name}] Buy side sweep: Pivot Low: {pl_price}, Sweep Low: {current_low}")
+                        self.notified_events[symbol][config_name].add(event_key)
         
         for sweep in self.sweeps_pl[symbol][config_name][:]:
             pl_idx, pl_price, sweep_low, sweep_idx, manip_low, manip_high = sweep
@@ -234,7 +250,10 @@ class TradingEngine:
                             'pivot_price': pl_price, 'sweep_low': sweep_low, 'sweep_time': index[sweep_idx],
                             'manip_low': manip_low, 'manip_high': manip_high, 'risk_amount': risk_amount
                         }
-                        self.notifier.send_message(f"[{symbol}/{config_name}] Long işlem açıldı: Entry: {entry_price}, SL: {sl_price}, TP: {tp_price}")
+                        event_key = f"long_open_{index[i]}"
+                        if event_key not in self.notified_events[symbol][config_name]:
+                            self.notifier.send_message(f"[{symbol}/{config_name}] Long işlem açıldı: Entry: {entry_price}, SL: {sl_price}, TP: {tp_price}")
+                            self.notified_events[symbol][config_name].add(event_key)
                         self.positions[symbol][config_name].append(trade)
                         self.plotter.save_trade_graph(symbol, config_name, trade, self.data[symbol][config_name], is_opening=True)
                         self.sweeps_pl[symbol][config_name].remove(sweep)
@@ -259,7 +278,10 @@ class TradingEngine:
                             'pivot_price': pl_price, 'sweep_low': sweep_low, 'sweep_time': index[sweep_idx],
                             'manip_low': manip_low, 'manip_high': manip_high, 'risk_amount': risk_amount
                         }
-                        self.notifier.send_message(f"[{symbol}/{config_name}] Long işlem açıldı: Entry: {entry_price}, SL: {sl_price}, TP: {tp_price}")
+                        event_key = f"long_open_{index[i]}"
+                        if event_key not in self.notified_events[symbol][config_name]:
+                            self.notifier.send_message(f"[{symbol}/{config_name}] Long işlem açıldı: Entry: {entry_price}, SL: {sl_price}, TP: {tp_price}")
+                            self.notified_events[symbol][config_name].add(event_key)
                         self.positions[symbol][config_name].append(trade)
                         self.plotter.save_trade_graph(symbol, config_name, trade, self.data[symbol][config_name], is_opening=True)
                         self.sweeps_pl[symbol][config_name].remove(sweep)
@@ -295,7 +317,10 @@ class TradingEngine:
                             'pivot_price': ph_price, 'sweep_high': sweep_high, 'sweep_time': index[sweep_idx],
                             'manip_low': manip_low, 'manip_high': manip_high, 'risk_amount': risk_amount
                         }
-                        self.notifier.send_message(f"[{symbol}/{config_name}] Short işlem açıldı: Entry: {entry_price}, SL: {sl_price}, TP: {tp_price}")
+                        event_key = f"short_open_{index[i]}"
+                        if event_key not in self.notified_events[symbol][config_name]:
+                            self.notifier.send_message(f"[{symbol}/{config_name}] Short işlem açıldı: Entry: {entry_price}, SL: {sl_price}, TP: {tp_price}")
+                            self.notified_events[symbol][config_name].add(event_key)
                         self.positions[symbol][config_name].append(trade)
                         self.plotter.save_trade_graph(symbol, config_name, trade, self.data[symbol][config_name], is_opening=True)
                         self.sweeps_ph[symbol][config_name].remove(sweep)
@@ -320,7 +345,10 @@ class TradingEngine:
                             'pivot_price': ph_price, 'sweep_high': sweep_high, 'sweep_time': index[sweep_idx],
                             'manip_low': manip_low, 'manip_high': manip_high, 'risk_amount': risk_amount
                         }
-                        self.notifier.send_message(f"[{symbol}/{config_name}] Short işlem açıldı: Entry: {entry_price}, SL: {sl_price}, TP: {tp_price}")
+                        event_key = f"short_open_{index[i]}"
+                        if event_key not in self.notified_events[symbol][config_name]:
+                            self.notifier.send_message(f"[{symbol}/{config_name}] Short işlem açıldı: Entry: {entry_price}, SL: {sl_price}, TP: {tp_price}")
+                            self.notified_events[symbol][config_name].add(event_key)
                         self.positions[symbol][config_name].append(trade)
                         self.plotter.save_trade_graph(symbol, config_name, trade, self.data[symbol][config_name], is_opening=True)
                         self.sweeps_ph[symbol][config_name].remove(sweep)
