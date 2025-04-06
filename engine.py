@@ -32,7 +32,7 @@ class TradingEngine:
         self.sweeps_ph = {symbol: {name: [] for name in CONFIGS} for symbol in SYMBOLS}
         self.used_pivots = {symbol: {name: set() for name in CONFIGS} for symbol in SYMBOLS}
         self.pivot_history = {symbol: {name: {'ph': {}, 'pl': {}} for name in CONFIGS} for symbol in SYMBOLS}
-        self.notified_events = {symbol: {name: set() for name in CONFIGS} for symbol in SYMBOLS}  # Yeni: Bildirim takibi
+        self.notified_events = {symbol: {name: set() for name in CONFIGS} for symbol in SYMBOLS}  # Bildirim takibi
         self.data_manager = data_manager
         self.notifier = notifier
         self.plotter = plotter
@@ -107,31 +107,31 @@ class TradingEngine:
         for ph_idx, ph_price in ph_dict.items():
             if ph_idx in self.used_pivots[symbol][config_name]:
                 continue
-            event_key = f"ph_{ph_idx}_proximity"
+            proximity_key = f"ph_proximity_{ph_price}"
+            manip_key = f"ph_manip_{ph_price}"
             proximity = abs(current_price - ph_price) / ph_price
-            if proximity < PROXIMITY_THRESHOLD and event_key not in self.notified_events[symbol][config_name]:
+            if proximity < PROXIMITY_THRESHOLD and proximity_key not in self.notified_events[symbol][config_name]:
                 self.notifier.send_message(f"[{symbol}/{config_name}] UYARI: Fiyat Pivot High ({ph_price}) manipülasyon bölgesine yakın! (Mesafe: {proximity*100:.2f}%)")
-                self.notified_events[symbol][config_name].add(event_key)
-            event_key = f"ph_{ph_idx}_manip"
+                self.notified_events[symbol][config_name].add(proximity_key)
             if current_price > ph_price:
                 manip_ratio = (current_price - ph_price) / ph_price
-                if manip_ratio >= config["MANIPULATION_THRESHOLD"] and event_key not in self.notified_events[symbol][config_name]:
+                if manip_ratio >= config["MANIPULATION_THRESHOLD"] and manip_key not in self.notified_events[symbol][config_name]:
                     self.notifier.send_message(f"[{symbol}/{config_name}] DİKKAT: Manipülasyon olabilir! Pivot High ({ph_price}) aşıldı, oran: {manip_ratio*100:.2f}%")
-                    self.notified_events[symbol][config_name].add(event_key)
+                    self.notified_events[symbol][config_name].add(manip_key)
         for pl_idx, pl_price in pl_dict.items():
             if pl_idx in self.used_pivots[symbol][config_name]:
                 continue
-            event_key = f"pl_{pl_idx}_proximity"
+            proximity_key = f"pl_proximity_{pl_price}"
+            manip_key = f"pl_manip_{pl_price}"
             proximity = abs(pl_price - current_price) / pl_price
-            if proximity < PROXIMITY_THRESHOLD and event_key not in self.notified_events[symbol][config_name]:
+            if proximity < PROXIMITY_THRESHOLD and proximity_key not in self.notified_events[symbol][config_name]:
                 self.notifier.send_message(f"[{symbol}/{config_name}] UYARI: Fiyat Pivot Low ({pl_price}) manipülasyon bölgesine yakın! (Mesafe: {proximity*100:.2f}%)")
-                self.notified_events[symbol][config_name].add(event_key)
-            event_key = f"pl_{pl_idx}_manip"
+                self.notified_events[symbol][config_name].add(proximity_key)
             if current_price < pl_price:
                 manip_ratio = (pl_price - current_price) / pl_price
-                if manip_ratio >= config["MANIPULATION_THRESHOLD"] and event_key not in self.notified_events[symbol][config_name]:
+                if manip_ratio >= config["MANIPULATION_THRESHOLD"] and manip_key not in self.notified_events[symbol][config_name]:
                     self.notifier.send_message(f"[{symbol}/{config_name}] DİKKAT: Manipülasyon olabilir! Pivot Low ({pl_price}) altına inildi, oran: {manip_ratio*100:.2f}%")
-                    self.notified_events[symbol][config_name].add(event_key)
+                    self.notified_events[symbol][config_name].add(manip_key)
 
     def monitor_position(self, symbol, config_name, pos):
         while self.running and pos in self.positions[symbol][config_name]:
@@ -206,7 +206,7 @@ class TradingEngine:
                 if manipulation_ratio >= config["MANIPULATION_THRESHOLD"]:
                     self.sweeps_ph[symbol][config_name].append((ph_idx, ph_price, current_high, i, current_low, current_high))
                     self.used_pivots[symbol][config_name].add(ph_idx)
-                    event_key = f"sweep_ph_{ph_idx}"
+                    event_key = f"sweep_ph_{ph_price}"
                     if event_key not in self.notified_events[symbol][config_name]:
                         self.notifier.send_message(f"[{symbol}/{config_name}] Sell side sweep: Pivot High: {ph_price}, Sweep High: {current_high}")
                         self.notified_events[symbol][config_name].add(event_key)
@@ -219,7 +219,7 @@ class TradingEngine:
                 if manipulation_ratio >= config["MANIPULATION_THRESHOLD"]:
                     self.sweeps_pl[symbol][config_name].append((pl_idx, pl_price, current_low, i, current_low, current_high))
                     self.used_pivots[symbol][config_name].add(pl_idx)
-                    event_key = f"sweep_pl_{pl_idx}"
+                    event_key = f"sweep_pl_{pl_price}"
                     if event_key not in self.notified_events[symbol][config_name]:
                         self.notifier.send_message(f"[{symbol}/{config_name}] Buy side sweep: Pivot Low: {pl_price}, Sweep Low: {current_low}")
                         self.notified_events[symbol][config_name].add(event_key)
